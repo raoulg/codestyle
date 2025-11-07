@@ -20,6 +20,14 @@ If you would install both versions of `Numpy` on your computer, there is a good 
 
 ## Dependency management with uv
 
+On macOS and Linux you can install uv with:
+
+```bash
+ curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Please refer to [uv docs](https://docs.astral.sh/uv/getting-started/installation/) for installation on your system.
+
 These version requirements of packages in a project, is called dependency management. Python is known for its horrific dependency management. Of the many tools that try to solve this problem, none of them are perfect. The most (in)famous and widely used tool is [`Anaconda`](https://www.anaconda.com/). However, Anaconda is bulky (it adds over 5GB of dependencies to your environment), doesnt follow [PEP standards like the `pyproject.toml` file](https://peps.python.org/pep-0621/) and if you make a venv and export the dependencies, the export is OS specific and wont be reproducable for other OS-es (eg between Linux and Windows) unless you use a workaround to strip the OS-specific parts.
 
 Therefore, we have chosen to use `uv` as our dependency manager. It is not perfect either, but implements some of the best practices available and helps avoid a lot of problems.

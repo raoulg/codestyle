@@ -1,7 +1,7 @@
 pre-commit:
   commands:
     lychee:
-      run: lychee . --suggest --max-concurrency 32 --cache --format detailed --header "accept=*/*" --max-cache-age 7d
+      run: lychee . --suggest --max-concurrency 32 --cache --format detailed --max-cache-age 7d
     md:
       glob: "*.md"
       run: mdformat {staged_files}
