@@ -6,7 +6,6 @@ authors = [
     { name = "Raoul Grouls", email = "Raoul.Grouls@han.nl" }
 ]
 dependencies = [
-    "lefthook>=1.8.1",
     "mdformat>=0.7.18",
     "markdown-toc>=1.2.6",
 ]
