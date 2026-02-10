@@ -63,7 +63,16 @@ Or, with PowerShell:
 ```
 
 Once activated, you'll see the virtual environment's name in your command prompt, indicating that you are now working within the virtual environment.
-With the virtual environment activated, you can use pythons native `pip` to install packages and dependencies. For example, to install a package named example-package, use:
+With the virtual environment activated, you can use pythons native `pip` to install packages and dependencies.
+
+If you have a `pyproject.toml` file, you can use
+
+```bash
+pip install -e .
+```
+
+to install all dependencies. It is also possible to install new packages.
+For example, to install a package named `example-package`, use:
 
 ```bash
 pip install example-package
