@@ -1,5 +1,9 @@
 # Code style standards
 
+> 🤖 **Use this course from your coding assistant.** These guidelines are also
+> available as an MCP server, so tools like Claude Code, Cursor, or Claude
+> Desktop can query them directly. See [MCP_SERVER.md](MCP_SERVER.md).
+
 # Table of Contents
 
 - Overview
