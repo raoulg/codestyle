@@ -266,17 +266,49 @@ def _read_doc(filename: str) -> str:
         raise FileNotFoundError(filename) from exc
 
 
+def _doc_url(filename: str) -> str:
+    """Browsable GitHub URL for a guideline (rendered markdown, for humans).
+
+    Uses the same ref the server is pinned to, so a link always points at the
+    exact text the reader is being coached on.
+    """
+    return f"https://github.com/raoulg/codestyle/blob/{CODESTYLE_REF}/docs/{filename}"
+
+
+def _topic_ref(topic: Topic) -> str:
+    """A markdown link to a topic's online guideline, or a plain note."""
+    if topic.doc:
+        return f"[{topic.doc}]({_doc_url(topic.doc)})"
+    return "(no online doc)"
+
+
+def _area(topic: Topic) -> str:
+    """Which development stage 'owns' a topic — the area of the map it sits in.
+
+    Derived from the README classifiers so it tracks the table. The four stages
+    are AREAS on a rough map, not a strict 1..N ranking: a topic that is already
+    a must (🏅) by *consolidate* is a foundation you adopt while still exploring
+    ("explore"); one that only becomes a must at *deploy* is "deploy"; the rest
+    become a must at *cooperate* — those safe to start early (💡 at explore) are
+    "consolidate", the ones that would slow you down early (🐌) are "cooperate".
+    """
+    classifiers = topic.classifiers
+    first_must = next((s for s in STAGES if classifiers[s] == "🏅"), "deploy")
+    if first_must in ("explore", "consolidate"):
+        return "explore"
+    if first_must == "deploy":
+        return "deploy"
+    return "consolidate" if classifiers["explore"] == "💡" else "cooperate"
+
+
 def _topic_line(topic: Topic, stage: Optional[str] = None) -> str:
-    """One-line summary of a topic for list output."""
+    """One-line summary of a topic for list output, with an online link."""
     if stage:
         emoji = topic.classifiers[stage]
         tail = f"{emoji} ({CLASSIFIER_MEANING[emoji]})"
     else:
-        tail = " ".join(
-            f"{s}:{topic.classifiers[s]}" for s in STAGES
-        )
-    doc = topic.doc or "(no doc — see README)"
-    return f"- **{topic.name}** [{doc}] — {tail}"
+        tail = " ".join(f"{s}:{topic.classifiers[s]}" for s in STAGES)
+    return f"- **{topic.name}** — {_topic_ref(topic)} — {tail}"
 
 
 # --------------------------------------------------------------------------- #
@@ -364,7 +396,12 @@ async def codestyle_get_guideline(params: GetGuidelineInput) -> str:
         return f"Error: doc file '{topic.doc}' is listed in the README but missing on disk."
 
     ratings = " ".join(f"{s}:{topic.classifiers[s]}" for s in STAGES)
-    return f"# {topic.name}\n\n_Stage ratings — {ratings}_\n\n{body}"
+    header = (
+        f"# {topic.name}\n\n"
+        f"_Stage ratings — {ratings}_\n"
+        f"_Further reading (share this link): {_doc_url(topic.doc)}_\n\n"
+    )
+    return header + body
 
 
 @mcp.tool(
@@ -421,7 +458,8 @@ async def codestyle_search(params: SearchInput) -> str:
     scored.sort(key=lambda item: item[0], reverse=True)
     lines = [f"# Search results for '{params.query}'", ""]
     for score, topic, snippet in scored[: params.limit]:
-        lines.append(f"## {topic.name} ({topic.doc}) — {score} hit(s)")
+        lines.append(f"## {topic.name} — {score} hit(s)")
+        lines.append(f"Further reading: {_doc_url(topic.doc)}")
         lines.append(f"…{snippet}…")
         lines.append("")
     return "\n".join(lines)
@@ -463,22 +501,34 @@ async def codestyle_guidance_for_stage(params: StageInput) -> str:
         lines.append(f"## {emoji} {heading}")
         if buckets[emoji]:
             for topic in buckets[emoji]:
-                doc = topic.doc or "(no doc)"
-                lines.append(f"- {topic.name} [{doc}]")
+                lines.append(f"- {topic.name} — {_topic_ref(topic)}")
         else:
             lines.append("- (none)")
         lines.append("")
     return "\n".join(lines)
 
 
-def _ladder_lines() -> list[str]:
-    """The progression ladder: topics in README order (easiest foundations
-    first), numbered, with their doc and per-stage ratings."""
+AREA_BLURB: dict[str, str] = {
+    "explore": "Explore — foundations worth adopting from day one",
+    "consolidate": "Consolidate — organising code you've decided to keep",
+    "cooperate": "Cooperate — making it readable and safe for others to build on",
+    "deploy": "Deploy — hardening it into an extensible library",
+}
+
+
+def _map_by_area() -> list[str]:
+    """The guidelines grouped into the four development-stage AREAS.
+
+    The areas form a rough map (Explore -> Deploy), NOT a strict 1..N ranking:
+    within an area the topics are peers, and a later area is not simply 'better'.
+    """
     lines: list[str] = []
-    for i, topic in enumerate(TOPICS, start=1):
-        doc = topic.doc or "(no doc)"
-        ratings = " ".join(f"{s}:{topic.classifiers[s]}" for s in STAGES)
-        lines.append(f"{i}. {topic.name} [{doc}] — {ratings}")
+    for stage in STAGES:
+        lines.append(f"### {AREA_BLURB[stage]}")
+        for topic in TOPICS:
+            if _area(topic) == stage:
+                lines.append(f"- {topic.name} — {_topic_ref(topic)}")
+        lines.append("")
     return lines
 
 
@@ -502,12 +552,13 @@ async def codestyle_review_rubric(params: ReviewRubricInput) -> str:
 
     Args:
         params (ReviewRubricInput):
-            - focus_rungs (int): how many of the lowest unmet guidelines to focus
-              on (1-6, default 3).
+            - focus_rungs (int): how many unmet guidelines to focus on (1-6,
+              default 3).
 
     Returns:
-        str: Markdown containing the review method, the guardrails, and the
-        ordered progression ladder (built live from the course's README).
+        str: Markdown containing the review method, the guardrails, and the map
+        of the four stage-areas (built live from the course's README, each topic
+        linked to its guideline online).
     """
     n = params.focus_rungs
     parts = [
@@ -516,41 +567,55 @@ async def codestyle_review_rubric(params: ReviewRubricInput) -> str:
         "You are a supportive mentor. The goal is the learner's GROWTH, not a "
         "complete audit. Meet them where they are and coach the next small step.",
         "",
+        "## How the guidelines are organised",
+        "",
+        "The guidelines fall into four development-stage AREAS — Explore, "
+        "Consolidate, Cooperate, Deploy — shown on the map below. Treat these as a "
+        "rough map, not a strict ranking: the areas are loosely ordered (Explore "
+        "is more foundational than Deploy), but WITHIN an area the topics are peers "
+        "— e.g. Open-Closed and ABC/Protocol are both Deploy-area concerns; neither "
+        "is 'more advanced' than the other. Never imply a strict 1..N ordering.",
+        "",
         "## Method",
         "",
         "1. Read the learner's code with your own file tools.",
-        "2. Walk the progression ladder below IN ORDER. For each guideline, judge "
-        "whether the code ✅ meets it, 🟡 partly meets it, or ❌ does not yet. When "
-        "unsure what a guideline requires, call `codestyle_get_guideline` (or read "
-        "the `codestyle://guideline/{name}` resource) before judging.",
-        "3. Open with encouragement: name 1-3 things they ALREADY do well (the ✅ "
-        "rungs). Beginners need to know what to keep doing.",
-        f"4. Pick the growth edge: the lowest {n} unmet-or-partial rung(s). These, "
-        "and ONLY these, are the focus. Do not dump the whole ladder on them.",
+        "2. Locate them on the map: find the highest area where their code is "
+        "mostly solid, and the lowest area with real gaps. For each guideline near "
+        "that edge, judge whether the code ✅ meets it, 🟡 partly meets it, or ❌ "
+        "does not yet. When unsure what a guideline requires, call "
+        "`codestyle_get_guideline` (or read `codestyle://guideline/{name}`) first.",
+        "3. Open with encouragement: name 1-3 things they ALREADY do well, and say "
+        "which area that puts them in. Learners need to know what to keep doing.",
+        f"4. Pick the growth edge: the {n} most valuable unmet-or-partial "
+        "guidelines, drawn from the lowest area that still has gaps (spill into the "
+        "next area only if the lower one is solid). These, and ONLY these, are the "
+        "focus. Do not sweep the whole map.",
         "5. For each focus item:",
         "   - Quote a short, concrete snippet from THEIR code that shows the gap.",
-        "   - Explain in a sentence or two why it matters, grounded in the guideline.",
+        "   - Give a one-sentence 'what it is and why it helps' for the principle.",
         "   - Show a small, concrete fix (a few lines) in their own code's style.",
-        "   - Point to the guideline (its doc name or `codestyle://guideline/...`).",
-        "6. Close with one line of \"what's next\": name the rung that comes right "
-        "after the focus cluster, so they see the path — but don't teach it yet.",
+        "   - Add a **Further reading** link — the guideline's URL from the map "
+        "below (or from `codestyle_get_guideline`) — so they can read more.",
+        "6. Close with one line of \"what's next\": name the AREA (or a peer topic "
+        "in it) they grow into next — so they see the path, without teaching it yet.",
         "",
         "## Guardrails",
         "",
-        "- Never overwhelm. If they still hardcode paths, start there; higher rungs "
-        "(testing, open-closed, ABCs) can wait until the foundations are solid.",
+        "- Never overwhelm. If they still hardcode paths, start in the Explore area; "
+        "Deploy-area concerns (open-closed, ABCs) can wait until foundations are solid.",
+        "- Refer to guidelines by NAME and AREA, never by a rung number — there is "
+        "no strict 1..N ladder, and within an area topics are peers.",
+        "- Always include the guideline link when you reference one; a learner who "
+        "wants to go deeper should be one click away.",
         "- Match your depth to their level; a first-week student and a "
         "nearly-deploying one need different reviews.",
         "- Be specific and kind. Every point ties to their actual code, never "
         "generic advice. Show before/after over long explanations.",
         "",
-        "## Progression ladder (assess in this order)",
-        "",
-        "Ordered from foundational to advanced. Ratings per stage: "
-        "🐌 may slow you down · 💡 good idea · 🏅 a must.",
+        "## The map — four areas (topics within an area are peers)",
         "",
     ]
-    parts += _ladder_lines()
+    parts += _map_by_area()
     return "\n".join(parts)
 
 
@@ -569,10 +634,11 @@ def review_prompt(target: str = "the code in the current project") -> str:
         f"Please review {target} against the Code Style course, as a supportive "
         "mentor coaching my next step.\n\n"
         "Step 1: call the `codestyle_review_rubric` tool to get the review method "
-        "and the progression ladder.\n"
+        "and the map of stage-areas.\n"
         "Step 2: follow it exactly against my actual code — tell me what I already "
-        "do well, then give focused, encouraging feedback on only the lowest few "
-        "guidelines I don't meet yet. Don't overwhelm me with everything at once."
+        "do well, then give focused, encouraging feedback on only a few guidelines "
+        "I don't meet yet, each with a link to read more. Don't overwhelm me with "
+        "everything at once."
     )
 
 

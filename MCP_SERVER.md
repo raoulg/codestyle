@@ -47,13 +47,13 @@ its guidelines from the repo over HTTP.
 You pin a version with `CODESTYLE_REF` — a git tag. That one variable selects
 both the script (in the URL) and the guidelines it fetches (inside the script),
 so the whole cohort runs exactly the same thing and the two can't drift apart.
-The current release is **`v0.1.0`**; add it to your assistant with one of the
+The current release is **`v0.2.0`**; add it to your assistant with one of the
 following.
 
 ### Claude Code
 
 ```bash
-claude mcp add codestyle -e CODESTYLE_REF=v0.1.0 -- \
+claude mcp add codestyle -e CODESTYLE_REF=v0.2.0 -- \
   sh -c 'uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py'
 ```
 
@@ -67,7 +67,7 @@ Add to `.cursor/mcp.json` (per-project) or `~/.cursor/mcp.json` (global):
     "codestyle": {
       "command": "sh",
       "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
-      "env": { "CODESTYLE_REF": "v0.1.0" }
+      "env": { "CODESTYLE_REF": "v0.2.0" }
     }
   }
 }
@@ -81,7 +81,7 @@ Add to `~/.codex/config.toml`:
 [mcp_servers.codestyle]
 command = "sh"
 args = ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"]
-env = { CODESTYLE_REF = "v0.1.0" }
+env = { CODESTYLE_REF = "v0.2.0" }
 ```
 
 ### Claude Desktop
@@ -95,13 +95,13 @@ restart the app:
     "codestyle": {
       "command": "sh",
       "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
-      "env": { "CODESTYLE_REF": "v0.1.0" }
+      "env": { "CODESTYLE_REF": "v0.2.0" }
     }
   }
 }
 ```
 
-To move to a newer release later, change `v0.1.0` to the new tag and re-add.
+To move to a newer release later, change `v0.2.0` to the new tag and re-add.
 (The `sh` wrapper is for macOS/Linux; on Windows, drop `sh -c` and put the tag
 directly in the URL instead, keeping the `CODESTYLE_REF` env value in sync.)
 
