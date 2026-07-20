@@ -39,21 +39,22 @@ step, no database, no embeddings.
 
 ## Install
 
-`uv` can run the server straight from its URL: it downloads the single script,
+`uv` runs the server straight from a URL: it downloads the single script,
 provisions Python and the `mcp` package from the script's own
 [PEP 723](https://peps.python.org/pep-0723/) metadata, and the server fetches
-its guidelines from the repo over HTTP. The URL is:
+its guidelines from the repo over HTTP.
 
-```
-https://raw.githubusercontent.com/raoulg/codestyle/main/codestyle_mcp.py
-```
-
-Add it to your assistant with one of the following.
+You pin a version with `CODESTYLE_REF` — a git tag. That one variable selects
+both the script (in the URL) and the guidelines it fetches (inside the script),
+so the whole cohort runs exactly the same thing and the two can't drift apart.
+The current release is **`v0.1.0`**; add it to your assistant with one of the
+following.
 
 ### Claude Code
 
 ```bash
-claude mcp add codestyle -- uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/main/codestyle_mcp.py
+claude mcp add codestyle -e CODESTYLE_REF=v0.1.0 -- \
+  sh -c 'uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py'
 ```
 
 ### Cursor
@@ -64,8 +65,9 @@ Add to `.cursor/mcp.json` (per-project) or `~/.cursor/mcp.json` (global):
 {
   "mcpServers": {
     "codestyle": {
-      "command": "uv",
-      "args": ["run", "--no-project", "https://raw.githubusercontent.com/raoulg/codestyle/main/codestyle_mcp.py"]
+      "command": "sh",
+      "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
+      "env": { "CODESTYLE_REF": "v0.1.0" }
     }
   }
 }
@@ -77,8 +79,9 @@ Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.codestyle]
-command = "uv"
-args = ["run", "--no-project", "https://raw.githubusercontent.com/raoulg/codestyle/main/codestyle_mcp.py"]
+command = "sh"
+args = ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"]
+env = { CODESTYLE_REF = "v0.1.0" }
 ```
 
 ### Claude Desktop
@@ -90,12 +93,17 @@ restart the app:
 {
   "mcpServers": {
     "codestyle": {
-      "command": "uv",
-      "args": ["run", "--no-project", "https://raw.githubusercontent.com/raoulg/codestyle/main/codestyle_mcp.py"]
+      "command": "sh",
+      "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
+      "env": { "CODESTYLE_REF": "v0.1.0" }
     }
   }
 }
 ```
+
+To move to a newer release later, change `v0.1.0` to the new tag and re-add.
+(The `sh` wrapper is for macOS/Linux; on Windows, drop `sh -c` and put the tag
+directly in the URL instead, keeping the `CODESTYLE_REF` env value in sync.)
 
 ## Review your code
 

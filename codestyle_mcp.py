@@ -25,6 +25,7 @@ no embeddings, no database.
 
 from __future__ import annotations
 
+import os
 import re
 import urllib.error
 import urllib.request
@@ -47,7 +48,12 @@ README = REPO_ROOT / "README.md"
 # If the course files aren't next to this script, fetch them from the public
 # repo over HTTP. This is what makes the zero-clone one-liner work:
 #   uv run --no-project <RAW_BASE>/codestyle_mcp.py
-RAW_BASE = "https://raw.githubusercontent.com/raoulg/codestyle/main"
+#
+# CODESTYLE_REF selects which git ref (branch, tag, or commit) to fetch content
+# from; it defaults to "main". Point the launch URL at the same ref and both the
+# script and its content stay pinned together — see MCP_SERVER.md.
+CODESTYLE_REF = os.environ.get("CODESTYLE_REF", "main")
+RAW_BASE = f"https://raw.githubusercontent.com/raoulg/codestyle/{CODESTYLE_REF}"
 LOCAL = README.is_file() and DOCS_DIR.is_dir()
 
 # Cache for content fetched over HTTP (unused in local mode).
