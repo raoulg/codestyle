@@ -101,9 +101,30 @@ restart the app:
 }
 ```
 
-To move to a newer release later, change `v0.2.0` to the new tag and re-add.
 (The `sh` wrapper is for macOS/Linux; on Windows, drop `sh -c` and put the tag
 directly in the URL instead, keeping the `CODESTYLE_REF` env value in sync.)
+
+## Update to a new version
+
+Pick the newest tag from the [releases](https://github.com/raoulg/codestyle/tags),
+then point `CODESTYLE_REF` at it. Because the tag lives in the URL, switching
+tags fetches the new script automatically — no cache clearing needed.
+
+**Claude Code** — re-running `add` errors if the server already exists, so
+remove first, then add with the new tag (change `v0.2.0` to the target):
+
+```bash
+claude mcp remove codestyle -s user
+claude mcp add codestyle -s user -e CODESTYLE_REF=v0.2.0 -- \
+  sh -c 'uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py'
+```
+
+**Cursor / Codex / Claude Desktop** — edit the `CODESTYLE_REF` value in the
+config to the new tag.
+
+Then **restart your assistant** so it relaunches the server. Confirm the new
+version is live: in Claude Code, `claude mcp get codestyle` shows the pinned
+`CODESTYLE_REF`.
 
 ## Review your code
 
