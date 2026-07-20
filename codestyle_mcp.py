@@ -232,6 +232,22 @@ class StageInput(BaseModel):
     )
 
 
+class ReviewRubricInput(BaseModel):
+    """Input for the review-rubric tool."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    focus_rungs: int = Field(
+        default=3,
+        description=(
+            "How many of the lowest unmet guidelines to focus the review on, so "
+            "a beginner isn't overwhelmed. Defaults to 3 (a small cluster)."
+        ),
+        ge=1,
+        le=6,
+    )
+
+
 def _read_doc(filename: str) -> str:
     """Read a doc file's text, raising a clear error if it is missing.
 
@@ -447,6 +463,111 @@ async def codestyle_guidance_for_stage(params: StageInput) -> str:
             lines.append("- (none)")
         lines.append("")
     return "\n".join(lines)
+
+
+def _ladder_lines() -> list[str]:
+    """The progression ladder: topics in README order (easiest foundations
+    first), numbered, with their doc and per-stage ratings."""
+    lines: list[str] = []
+    for i, topic in enumerate(TOPICS, start=1):
+        doc = topic.doc or "(no doc)"
+        ratings = " ".join(f"{s}:{topic.classifiers[s]}" for s in STAGES)
+        lines.append(f"{i}. {topic.name} [{doc}] — {ratings}")
+    return lines
+
+
+@mcp.tool(
+    name="codestyle_review_rubric",
+    annotations={
+        "title": "Get the leveled code-review rubric",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+)
+async def codestyle_review_rubric(params: ReviewRubricInput) -> str:
+    """Return the method for reviewing a learner's code against this course.
+
+    This is the entry point for a *leveled* review: instead of auditing all
+    guidelines at once, the reviewer meets the learner where they are and coaches
+    the next small step. Call this first, then follow it against the learner's
+    actual code (which you read with your own file tools).
+
+    Args:
+        params (ReviewRubricInput):
+            - focus_rungs (int): how many of the lowest unmet guidelines to focus
+              on (1-6, default 3).
+
+    Returns:
+        str: Markdown containing the review method, the guardrails, and the
+        ordered progression ladder (built live from the course's README).
+    """
+    n = params.focus_rungs
+    parts = [
+        "# Reviewing a learner's code against the Code Style course",
+        "",
+        "You are a supportive mentor. The goal is the learner's GROWTH, not a "
+        "complete audit. Meet them where they are and coach the next small step.",
+        "",
+        "## Method",
+        "",
+        "1. Read the learner's code with your own file tools.",
+        "2. Walk the progression ladder below IN ORDER. For each guideline, judge "
+        "whether the code ✅ meets it, 🟡 partly meets it, or ❌ does not yet. When "
+        "unsure what a guideline requires, call `codestyle_get_guideline` (or read "
+        "the `codestyle://guideline/{name}` resource) before judging.",
+        "3. Open with encouragement: name 1-3 things they ALREADY do well (the ✅ "
+        "rungs). Beginners need to know what to keep doing.",
+        f"4. Pick the growth edge: the lowest {n} unmet-or-partial rung(s). These, "
+        "and ONLY these, are the focus. Do not dump the whole ladder on them.",
+        "5. For each focus item:",
+        "   - Quote a short, concrete snippet from THEIR code that shows the gap.",
+        "   - Explain in a sentence or two why it matters, grounded in the guideline.",
+        "   - Show a small, concrete fix (a few lines) in their own code's style.",
+        "   - Point to the guideline (its doc name or `codestyle://guideline/...`).",
+        "6. Close with one line of \"what's next\": name the rung that comes right "
+        "after the focus cluster, so they see the path — but don't teach it yet.",
+        "",
+        "## Guardrails",
+        "",
+        "- Never overwhelm. If they still hardcode paths, start there; higher rungs "
+        "(testing, open-closed, ABCs) can wait until the foundations are solid.",
+        "- Match your depth to their level; a first-week student and a "
+        "nearly-deploying one need different reviews.",
+        "- Be specific and kind. Every point ties to their actual code, never "
+        "generic advice. Show before/after over long explanations.",
+        "",
+        "## Progression ladder (assess in this order)",
+        "",
+        "Ordered from foundational to advanced. Ratings per stage: "
+        "🐌 may slow you down · 💡 good idea · 🏅 a must.",
+        "",
+    ]
+    parts += _ladder_lines()
+    return "\n".join(parts)
+
+
+@mcp.prompt(
+    name="review",
+    description="Review my code against the Code Style course, leveled to where I am.",
+)
+def review_prompt(target: str = "the code in the current project") -> str:
+    """A one-command leveled code review.
+
+    Args:
+        target: what to review (a path, a file, or a description). Defaults to
+            the current project.
+    """
+    return (
+        f"Please review {target} against the Code Style course, as a supportive "
+        "mentor coaching my next step.\n\n"
+        "Step 1: call the `codestyle_review_rubric` tool to get the review method "
+        "and the progression ladder.\n"
+        "Step 2: follow it exactly against my actual code — tell me what I already "
+        "do well, then give focused, encouraging feedback on only the lowest few "
+        "guidelines I don't meet yet. Don't overwhelm me with everything at once."
+    )
 
 
 # --------------------------------------------------------------------------- #
