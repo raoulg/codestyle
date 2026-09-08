@@ -47,13 +47,16 @@ its guidelines from the repo over HTTP.
 You pin a version with `CODESTYLE_REF` — a git tag. That one variable selects
 both the script (in the URL) and the guidelines it fetches (inside the script),
 so the whole cohort runs exactly the same thing and the two can't drift apart.
-The current release is **`v0.2.1`**; add it to your assistant with one of the
-following.
+
+Use **`stable`**. It is a tag that moves to the newest release, so a config that
+names it never goes out of date, and nothing on `main` reaches you before it has
+been released. The [releases](https://github.com/raoulg/codestyle/tags) also
+carry versioned tags such as `v0.2.1` for anyone who needs to freeze one.
 
 ### Claude Code
 
 ```bash
-claude mcp add codestyle -e CODESTYLE_REF=v0.2.1 -- \
+claude mcp add codestyle -e CODESTYLE_REF=stable -- \
   sh -c 'uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py'
 ```
 
@@ -67,7 +70,7 @@ Add to `.cursor/mcp.json` (per-project) or `~/.cursor/mcp.json` (global):
     "codestyle": {
       "command": "sh",
       "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
-      "env": { "CODESTYLE_REF": "v0.2.1" }
+      "env": { "CODESTYLE_REF": "stable" }
     }
   }
 }
@@ -81,7 +84,7 @@ Add to `~/.codex/config.toml`:
 [mcp_servers.codestyle]
 command = "sh"
 args = ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"]
-env = { CODESTYLE_REF = "v0.2.1" }
+env = { CODESTYLE_REF = "stable" }
 ```
 
 ### Claude Desktop
@@ -95,7 +98,7 @@ restart the app:
     "codestyle": {
       "command": "sh",
       "args": ["-c", "uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py"],
-      "env": { "CODESTYLE_REF": "v0.2.1" }
+      "env": { "CODESTYLE_REF": "stable" }
     }
   }
 }
@@ -106,12 +109,13 @@ directly in the URL instead, keeping the `CODESTYLE_REF` env value in sync.)
 
 ## Update to a new version
 
-Pick the newest tag from the [releases](https://github.com/raoulg/codestyle/tags),
-then point `CODESTYLE_REF` at it. Because the tag lives in the URL, switching
-tags fetches the new script automatically — no cache clearing needed.
+With `CODESTYLE_REF=stable`, **restart your assistant**: the server is fetched
+fresh on every launch, and the tag already points at the newest release.
 
-**Claude Code** — re-running `add` errors if the server already exists, so
-remove first, then add with the new tag (change `v0.2.1` to the target):
+If you froze a versioned tag instead, pick the target from the
+[releases](https://github.com/raoulg/codestyle/tags) and change the
+`CODESTYLE_REF` value in your config. In Claude Code, re-running `add` errors if
+the server already exists, so remove first:
 
 ```bash
 claude mcp remove codestyle -s user
@@ -119,12 +123,21 @@ claude mcp add codestyle -s user -e CODESTYLE_REF=v0.2.1 -- \
   sh -c 'uv run --no-project https://raw.githubusercontent.com/raoulg/codestyle/$CODESTYLE_REF/codestyle_mcp.py'
 ```
 
-**Cursor / Codex / Claude Desktop** — edit the `CODESTYLE_REF` value in the
-config to the new tag.
+Confirm what is live: in Claude Code, `claude mcp get codestyle` shows the
+pinned `CODESTYLE_REF`.
 
-Then **restart your assistant** so it relaunches the server. Confirm the new
-version is live: in Claude Code, `claude mcp get codestyle` shows the pinned
-`CODESTYLE_REF`.
+## Releasing (maintainer)
+
+A release is a versioned tag plus moving `stable` onto it:
+
+```bash
+git tag v0.2.2
+git tag -f stable v0.2.2
+git push origin v0.2.2
+git push -f origin stable
+```
+
+Everyone on `stable` gets it the next time their assistant starts.
 
 ## Review your code
 
