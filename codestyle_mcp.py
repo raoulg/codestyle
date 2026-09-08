@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mcp[cli]>=1.2.0"]
+# dependencies = ["mcp[cli]>=2,<3"]
 # ///
 """MCP server that exposes the Code Style course as tools and resources.
 
@@ -34,7 +34,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, ConfigDict, Field
 
 # --------------------------------------------------------------------------- #
@@ -85,7 +85,7 @@ CLASSIFIER_MEANING: dict[str, str] = {
     "🏅": "a must at this stage",
 }
 
-mcp = FastMCP("codestyle_mcp")
+mcp = MCPServer("codestyle_mcp")
 
 
 # --------------------------------------------------------------------------- #
